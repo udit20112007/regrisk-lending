@@ -1,0 +1,55 @@
+name: Test, build and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "30 13 * * 1"     # Mondays 19:00 India time, to refresh prices
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install packages
+        run: pip install -r requirements.txt
+      - name: Run the tests
+        run: python -m pytest -q
+      - name: Download real share prices
+        continue-on-error: true
+        run: python src/fetch_prices.py
+      - name: Build the web page
+        run: python scripts/build_site.py
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload the web page
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
