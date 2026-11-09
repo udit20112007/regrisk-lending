@@ -35,9 +35,35 @@ python -m pytest -q             # 20 checks on the calculations
 `data/sample_prices.csv`. Those prices are invented so the code can run offline. The app
 shows a yellow warning while they are in use. Never quote results from the sample data.
 
+## Put it online with GitHub only
+
+The repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml`). On every
+push to `main`, and every Monday, it:
+
+1. runs the 20 tests (a failure stops the deployment)
+2. downloads fresh share prices from Yahoo Finance
+3. packs the app into a single web page with [stlite](https://github.com/whitphx/stlite),
+   which runs Streamlit and Python inside the visitor's browser
+4. publishes that page on GitHub Pages
+
+One-time setup: in the repository open **Settings → Pages → Build and deployment** and set
+**Source** to **GitHub Actions**. Then push. The live address appears on the **Actions** tab
+when the run finishes, in the form `https://YOUR-USERNAME.github.io/regrisk-lending/`.
+
+Notes:
+
+- The first visit takes roughly 20 to 40 seconds, because the browser has to download Python.
+- If Yahoo Finance refuses the download, the workflow carries on with `data/prices.csv` from
+  the repository. Commit that file once from your own computer so there is always a fallback.
+  Without it the page uses the sample data and shows the warning.
+- To preview the page on your computer: `python scripts/build_site.py`, then
+  `python -m http.server --directory site` and open the address it prints.
+
 ## What is in the folder
 
 ```
+.github/workflows/deploy.yml   tests, builds and publishes the page on GitHub Pages
+scripts/build_site.py     packs the app into one web page for GitHub Pages
 app.py                    the interactive app (3 tabs)
 src/event_study.py        Part 1
 src/lending_model.py      Part 2

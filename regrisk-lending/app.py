@@ -256,8 +256,8 @@ with tab2:
         "top of the chart, the guarantee is small enough that the fintech profits at any default rate."
     )
     curve = lm.capacity_curve(inp)
-    best_level, best_capacity = lm.best_dlg(inp, respect_cap=True)
-    free_level, free_capacity = lm.best_dlg(inp, respect_cap=False)
+    best_level, best_capacity = lm.best_dlg(inp, respect_cap=True, curve=curve)
+    free_level, free_capacity = lm.best_dlg(inp, respect_cap=False, curve=curve)
 
     fig = go.Figure()
     fig.add_scatter(x=curve["dlg"] * 100, y=curve["lender_breakeven"] * 100, name="Lender still earns its minimum",
