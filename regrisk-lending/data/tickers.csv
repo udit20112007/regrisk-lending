@@ -1,0 +1,13 @@
+ticker,yahoo_symbol,company,models
+PAYTM,PAYTM.NS,One97 Communications (Paytm),payments;lending_distribution
+MOBIKWIK,MOBIKWIK.NS,One MobiKwik Systems,payments;lending_distribution
+POLICYBZR,POLICYBZR.NS,PB Fintech (Policybazaar / Paisabazaar),lending_distribution
+INFIBEAM,INFIBEAM.NS,Infibeam Avenues (CCAvenue),payments
+FINOPB,FINOPB.NS,Fino Payments Bank,payments
+BAJFINANCE,BAJFINANCE.NS,Bajaj Finance,lending_nbfc
+POONAWALLA,POONAWALLA.NS,Poonawalla Fincorp,lending_nbfc
+IIFL,IIFL.NS,IIFL Finance,lending_nbfc
+JMFINANCIL,JMFINANCIL.NS,JM Financial,lending_nbfc
+LTF,LTF.NS,L&T Finance,lending_nbfc
+SBICARD,SBICARD.NS,SBI Cards and Payment Services,cards
+KOTAKBANK,KOTAKBANK.NS,Kotak Mahindra Bank,bank_digital

@@ -1,0 +1,96 @@
+# Regulatory risk and fintech lending partnerships
+
+**How much is a fintech's loan-distribution partnership worth once RBI rule changes are allowed for?**
+
+Fintechs such as Paytm earn fees by finding borrowers for banks and NBFCs. To win those
+partnerships they often promise to cover the first slice of loan losses (a *default loss
+guarantee*, capped by RBI at 5% of the loans disbursed). Two things decide whether such a
+deal makes money: credit losses, and regulation. Most models only look at the first.
+
+This project measures the second from share prices and feeds it into the deal model.
+
+## How the three parts fit together
+
+| Part | Question it answers | File |
+|---|---|---|
+| 1. Event study | When RBI acts, how much value do fintech shares lose, and how often does it happen? | `src/event_study.py` |
+| 2. Lending model | For every Rs 100 lent, what do the fintech and the lender each earn? What guarantee level works best? | `src/lending_model.py` |
+| 3. Combined model | What is the partnership worth after regulatory shocks? What do specific rule changes do to it? | `src/integration.py` |
+
+The link: Part 1 produces **shocks per year** and **damage per shock** for a business model.
+Part 3 treats each shock as a permanent cut to future loan volume of that size, and re-values
+the partnership from Part 2. It also re-plays past shocks at random 3,000 times to show the
+range of outcomes.
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+python src/fetch_prices.py      # downloads real share prices (needs internet)
+streamlit run app.py            # opens the app in your browser
+python -m pytest -q             # 20 checks on the calculations
+```
+
+**Important: sample data.** Until you run `fetch_prices.py`, the app uses
+`data/sample_prices.csv`. Those prices are invented so the code can run offline. The app
+shows a yellow warning while they are in use. Never quote results from the sample data.
+
+## What is in the folder
+
+```
+app.py                    the interactive app (3 tabs)
+src/event_study.py        Part 1
+src/lending_model.py      Part 2
+src/integration.py        Part 3
+src/fetch_prices.py       downloads real prices from Yahoo Finance
+src/make_sample_data.py   creates the made-up sample prices
+data/events.csv           14 RBI actions, 2022 to 2026, each with a source link
+data/tickers.csv          12 listed companies and their business models
+tests/test_models.py      checks that the calculations are right
+STUDY_GUIDE.md            plain-language explanation of everything, plus interview questions
+```
+
+## The RBI rules the model is built on
+
+- **8 June 2023.** RBI allows default loss guarantees in digital lending, capped at 5% of the
+  amount disbursed. The guarantee must be cash, a lien-marked fixed deposit or a bank
+  guarantee, and must be invoked within 120 days of a missed payment.
+  ([summary](https://corridalegal.com/revisiting-the-rbis-guidelines-on-default-loss-guarantee-in-digital-lending/))
+- **May 2025.** NBFCs are told to ignore these guarantees when setting aside loss buffers.
+  ([report](https://www.angelone.in/news/market-updates/rbi-reinstates-default-loss-guarantees-framework-for-nbfcs))
+- **13 February 2026.** RBI lets NBFCs count the guarantee again, provided it is an integral
+  part of the loan arrangement. Cover shrinks each time it is invoked.
+  ([analysis](https://vinodkothari.com/2026/02/factoring-dlg-into-ecl-relief-but-not-a-free-pass/))
+
+The model has a switch for the May 2025 rule and sliders for the cap, so each of these can
+be tested.
+
+## Before you rely on the results
+
+1. **Check the event dates.** In `data/events.csv`, rows marked `check_day` have a verified
+   month but the exact day is from memory. Confirm them against the linked source.
+2. **Check the timing column.** `after_hours = 1` means the news came after the market
+   closed, so the reaction is measured from the next trading day. This is confirmed for the
+   Paytm Payments Bank order and the 2025 risk-weight rollback, and assumed for the rest.
+   The `CAR(-1,+5)` window is included as a cross-check that is less sensitive to timing.
+3. **Check the Yahoo symbols.** `fetch_prices.py` could not be run where this project was
+   built (no access to Yahoo Finance). If a company fails to download, correct its
+   `yahoo_symbol` in `data/tickers.csv`.
+4. **The lending numbers are illustrative.** Fees, costs and default rates are reasonable
+   starting values, not any company's actual figures. Replace them with numbers from annual
+   reports and investor presentations where you can.
+
+## Known limitations
+
+- Only 14 events, and some sit close together (15 and 16 November 2023; 4 and 5 March 2024),
+  so their windows overlap. Treat averages as indicative.
+- The link from share-price damage to lost loan volume is an assumption. The app has a
+  slider to test it.
+- Defaults are spread evenly over the loan's life. Real loans default more in early months.
+- The lender is assumed to stay in the deal whenever it earns its minimum return. The model
+  has no term for "skin in the game", so it can understate how much lenders value a guarantee.
+
+## Sources for the event list
+
+Each row of `data/events.csv` carries its own link. Main sources: RBI circulars, Reuters,
+Business Standard, Inc42 and Business Today.
