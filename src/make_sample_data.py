@@ -50,7 +50,7 @@ def main(seed: int = 7) -> None:
         pos = days.searchsorted(ev["announce_date"], side="left")
         if pos < len(days) and days[pos] == ev["announce_date"] and ev["after_hours"] == 1:
             pos += 1
-        if pos >= len(days):
+        if pos >= len(days) or ev["direction"] not in DIRECT_SHOCK:
             continue
         for _, row in tickers.iterrows():
             models = row["models"].split(";")

@@ -73,6 +73,11 @@ def load_prices() -> tuple:
 def load_events() -> pd.DataFrame:
     """The list of RBI actions. Lists stored as 'a;b;c' are split into Python lists."""
     events = pd.read_csv(DATA_DIR / "events.csv", parse_dates=["announce_date"])
+    # rows marked "ignore" were found by the automatic watch and rejected by a person
+    events = events[events["direction"] != "ignore"].reset_index(drop=True)
+    if "added_by" not in events.columns:
+        events["added_by"] = "manual"
+    events["added_by"] = events["added_by"].fillna("manual")
     for col in ("target_tickers", "affected_models"):
         events[col] = events[col].fillna("").apply(lambda s: [x for x in s.split(";") if x])
     return events

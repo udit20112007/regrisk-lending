@@ -67,6 +67,7 @@ def collect_data() -> dict:
             "title": ev["title"],
             "direction": ev["direction"],
             "date_check": ev["date_check"],
+            "added_by": ev["added_by"],
             "source_url": ev["source_url"],
             "studied": studied,
         })

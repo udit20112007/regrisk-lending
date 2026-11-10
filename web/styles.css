@@ -225,6 +225,7 @@ input[type="range"]::-moz-range-thumb {
 .swatch.line { width: 16px; height: 2px; border-radius: 2px; }
 .swatch.dot { border-radius: 50%; }
 .swatch.ring { border-radius: 50%; background: var(--surface) !important; border: 2px solid var(--text); }
+.swatch.unclear { background: var(--neutral-mark); }
 
 /* ---------- event picker ---------- */
 .event-detail { display: flex; gap: 14px; align-items: flex-start; padding-top: 14px; margin-top: 6px; border-top: 1px solid var(--border); }
@@ -232,6 +233,7 @@ input[type="range"]::-moz-range-thumb {
 .event-text { min-width: 0; }
 .event-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--text-3); margin-bottom: 4px; }
 .event-title { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
+.tag.auto { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
 .tag { padding: 1px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
 /* ---------- charts ---------- */
@@ -255,6 +257,7 @@ input[type="range"]::-moz-range-thumb {
 .chart .tl-dot { cursor: pointer; }
 .chart .tl-dot circle.shape { stroke: var(--text); stroke-width: 2; fill: var(--text); }
 .chart .tl-dot.easing circle.shape { fill: var(--surface); }
+.chart .tl-dot.unclear circle.shape { fill: var(--neutral-mark); stroke: var(--neutral-mark); }
 .chart .tl-dot.selected circle.shape { stroke: var(--accent); fill: var(--accent); }
 .chart .tl-dot.selected.easing circle.shape { fill: var(--surface); }
 .chart .tl-dot circle.halo { fill: var(--accent); opacity: 0; }

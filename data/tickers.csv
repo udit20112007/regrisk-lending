@@ -1,13 +1,13 @@
-ticker,yahoo_symbol,company,models
-PAYTM,PAYTM.NS,One97 Communications (Paytm),payments;lending_distribution
-MOBIKWIK,MOBIKWIK.NS,One MobiKwik Systems,payments;lending_distribution
-POLICYBZR,POLICYBZR.NS,PB Fintech (Policybazaar / Paisabazaar),lending_distribution
-INFIBEAM,INFIBEAM.NS,Infibeam Avenues (CCAvenue),payments
-FINOPB,FINOPB.NS,Fino Payments Bank,payments
-BAJFINANCE,BAJFINANCE.NS,Bajaj Finance,lending_nbfc
-POONAWALLA,POONAWALLA.NS,Poonawalla Fincorp,lending_nbfc
-IIFL,IIFL.NS,IIFL Finance,lending_nbfc
-JMFINANCIL,JMFINANCIL.NS,JM Financial,lending_nbfc
-LTF,LTF.NS,L&T Finance,lending_nbfc
-SBICARD,SBICARD.NS,SBI Cards and Payment Services,cards
-KOTAKBANK,KOTAKBANK.NS,Kotak Mahindra Bank,bank_digital
+ticker,yahoo_symbol,company,models,aliases
+PAYTM,PAYTM.NS,One97 Communications (Paytm),payments;lending_distribution,Paytm|One97
+MOBIKWIK,MOBIKWIK.NS,One MobiKwik Systems,payments;lending_distribution,MobiKwik
+POLICYBZR,POLICYBZR.NS,PB Fintech (Policybazaar / Paisabazaar),lending_distribution,PB Fintech|Policybazaar|Paisabazaar
+INFIBEAM,INFIBEAM.NS,Infibeam Avenues (CCAvenue),payments,Infibeam|CCAvenue
+FINOPB,FINOPB.NS,Fino Payments Bank,payments,Fino Payments Bank
+BAJFINANCE,BAJFINANCE.NS,Bajaj Finance,lending_nbfc,Bajaj Finance
+POONAWALLA,POONAWALLA.NS,Poonawalla Fincorp,lending_nbfc,Poonawalla
+IIFL,IIFL.NS,IIFL Finance,lending_nbfc,IIFL Finance
+JMFINANCIL,JMFINANCIL.NS,JM Financial,lending_nbfc,JM Financial
+LTF,LTF.NS,L&T Finance,lending_nbfc,L&T Finance
+SBICARD,SBICARD.NS,SBI Cards and Payment Services,cards,SBI Card
+KOTAKBANK,KOTAKBANK.NS,Kotak Mahindra Bank,bank_digital,Kotak Mahindra Bank

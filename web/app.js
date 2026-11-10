@@ -39,6 +39,7 @@
     same_model: { label: "Same business model", color: "var(--series-2)" },
     other: { label: "Unrelated companies", color: "var(--neutral-mark)" },
   };
+  const DIRECTION_LABEL = { tightening: "Tightening", easing: "Easing", unclear: "Direction not set" };
   const FINTECH_ROWS = [
     ["sourcing_fee", "Sourcing fee"], ["servicing_fee", "Servicing fee"],
     ["acquisition_cost", "Cost to acquire borrower"], ["collection_cost", "Collection cost"],
@@ -243,6 +244,12 @@
     } else {
       pill.textContent = "Prices to " + dateLabel(D.meta.price_end);
     }
+    if (D.events.some((e) => e.direction === "unclear")) {
+      const entry = make("li");
+      entry.appendChild(make("span", "swatch dot unclear"));
+      entry.appendChild(document.createTextNode("Direction not set"));
+      $("tlLegend").appendChild(entry);
+    }
     const years = D.events.map((e) => +e.date.slice(0, 4));
     $("tlRange").textContent = Math.min(...years) + "–" + Math.max(...years);
     $("methodData").textContent = `${D.events.length} RBI actions and ${D.meta.companies} listed companies, ` +
@@ -294,8 +301,13 @@
     const meta = $("eventMeta");
     meta.textContent = "";
     meta.appendChild(make("span", "", dateLabel(ev.date)));
-    meta.appendChild(make("span", "tag", ev.direction === "tightening" ? "Tightening" : "Easing"));
+    meta.appendChild(make("span", "tag", DIRECTION_LABEL[ev.direction] || ev.direction));
     if (ev.date_check !== "verified") meta.appendChild(make("span", "tag", "Exact day to verify"));
+    if (ev.added_by === "auto") {
+      const auto = make("span", "tag auto", "Auto-detected");
+      auto.title = "Found by the automatic RBI watch. Not yet checked by a person.";
+      meta.appendChild(auto);
+    }
     const link = make("a", "", "Source ↗");
     link.href = ev.source_url;
     link.target = "_blank";
@@ -317,7 +329,7 @@
     $("reactionLegend").hidden = state.view !== "chart" || !rows.length;
 
     if (!rows.length) {
-      $("reactionSub").textContent = "This action falls outside the price history, so it was not analysed.";
+      $("reactionSub").textContent = "Not analysed yet. The study needs six trading days of prices after the action, and enough history before it.";
       chart.textContent = "";
       tableHost.textContent = "";
       return;
@@ -349,7 +361,7 @@
   }
 
   function renderSummary() {
-    const order = { tightening: 0, easing: 1 };
+    const order = { tightening: 0, easing: 1, unclear: 2 };
     const roleOrder = { direct: 0, same_model: 1, other: 2 };
     const rows = D.summary[state.window].slice().sort((a, b) =>
       order[a.direction] - order[b.direction] || roleOrder[a.role] - roleOrder[b.role]);
@@ -361,7 +373,7 @@
         const p = make("span", significant ? "chip good" : "", r.p_value === null ? "–" : r.p_value.toFixed(3));
         if (significant) p.title = "Unlikely to be chance";
         return { cells: [
-          { text: r.direction === "tightening" ? "Tightening" : "Easing" },
+          { text: DIRECTION_LABEL[r.direction] || r.direction },
           { text: ROLE[r.role].label, strong: true },
           { text: String(r.observations) },
           { text: signed(pct(r.average)) },

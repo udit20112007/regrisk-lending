@@ -170,6 +170,28 @@ JavaScript copy of the same model so it can recalculate without a server."
 
 ---
 
+## 4c. The automatic RBI watch
+
+Every two hours a GitHub workflow reads RBI's two public feeds (press releases and
+notifications) and looks for new events. The rules are in `src/event_watch.py`.
+
+1. **Throw away routine items**: auctions, penalties, co-operative banks.
+2. **Entity event**: the title names a company we track *and* has an action word.
+3. **Sector event**: the title is about a core topic such as digital lending.
+4. **Direction** from the wording: "lifts" means easing, "action against" means tightening.
+   If the wording does not say, the direction is `unclear` and a person must decide.
+
+**Why rules and not AI?** Rules are free, run anywhere, and you can explain every decision.
+The cost is that they miss unusual wording and cannot judge if a new rule is good or bad for
+fintechs. That is why new rules usually come in as `unclear`, and why every automatic row is
+labelled for review.
+
+**A fair interview answer:** "The pipeline finds candidate events automatically, but I review
+each one before it counts as tightening or easing. I did not want an unreviewed classifier
+changing my headline numbers."
+
+---
+
 ## 5. Words you must know
 
 | Term | Meaning |

@@ -29,7 +29,7 @@ pip install -r requirements.txt
 python src/fetch_prices.py                  # downloads real share prices (needs internet)
 python scripts/build_site.py                # runs the event study and builds the website
 python -m http.server --directory site      # open the address it prints
-python -m pytest -q                         # 24 checks on the calculations
+python -m pytest -q                         # 47 checks on the calculations and the event watch
 ```
 
 **Important: sample data.** Until you run `fetch_prices.py`, the site uses
@@ -48,10 +48,43 @@ shows a "Sample data" warning while they are in use. Never quote results from th
 - **No outside services.** Charts are hand-written SVG (`web/charts.js`) and the font is
   bundled, so the page loads instantly and works offline.
 
+## Automatic updates
+
+Two GitHub workflows keep the site current without anyone touching it.
+
+| Workflow | When | What it does |
+|---|---|---|
+| `watch-rbi.yml` | Every 2 hours, 08:45 to 22:45 India time | Reads RBI's press-release and notification feeds, adds any new relevant action to `data/events.csv`, saves it to the repository and starts a rebuild |
+| `deploy.yml` | Every day at 19:00 India time, and on every push | Runs the tests, downloads fresh prices, rebuilds and publishes the site |
+
+**How the watch decides** (`src/event_watch.py`, plain rules, no AI):
+
+- It ignores routine items: auctions, penalties, co-operative banks, licence cancellations.
+- It keeps an item if the title names a tracked company together with an action word
+  ("action against", "lifts"...), or if it is about a core topic (digital lending, default
+  loss guarantee, payment aggregators, risk weights, credit cards...).
+- It reads the direction from the wording. If the wording does not say, the direction is
+  `unclear`. Unclear events appear on the site but are left out of the tightening and easing
+  statistics until you set the direction.
+
+**Your part: review what it adds.** The rules will sometimes be wrong. Rows the watch adds
+have `added_by = auto` and show an "Auto-detected" tag on the site. To review one, open
+`data/events.csv` on GitHub, click the pencil, and:
+
+- set `direction` to `tightening` or `easing` if it says `unclear`
+- change `added_by` to `manual` once you have checked it
+- to reject it, set `direction` to `ignore`. Do not delete the row, or the watch will add it again.
+
+A new event shows its share-price reaction once six trading days have passed.
+
+If RBI's site cannot be reached, the watch run fails with a red cross on the Actions tab, so
+you will notice. GitHub pauses scheduled workflows in a repository with no activity for 60
+days; if that happens, re-enable them on the Actions tab.
+
 ## Put it online with GitHub
 
 The repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml`). On every
-push to `main`, and every Monday, it:
+push to `main`, and every day, it:
 
 1. runs the tests (a failure stops the deployment)
 2. downloads fresh share prices from Yahoo Finance
@@ -72,6 +105,7 @@ Without it the site uses the sample data and shows the warning.
 src/event_study.py        Part 1
 src/lending_model.py      Part 2
 src/integration.py        Part 3
+src/event_watch.py        the rules that pick new RBI events out of RBI's feeds
 src/fetch_prices.py       downloads real prices from Yahoo Finance
 src/make_sample_data.py   creates the made-up sample prices
 data/events.csv           14 RBI actions, 2022 to 2026, each with a source link
@@ -85,9 +119,12 @@ web/charts.js             the charts
 web/fonts/                the Geist font (SIL Open Font License)
 
 scripts/build_site.py     runs the event study and builds site/
-.github/workflows/deploy.yml   tests, builds and publishes on GitHub Pages
+scripts/update_events.py  checks RBI's feeds and adds new events to data/events.csv
+.github/workflows/deploy.yml      tests, builds and publishes on GitHub Pages, daily
+.github/workflows/watch-rbi.yml   runs the RBI watch every two hours
 tests/test_models.py      checks that the calculations are right
 tests/test_js_parity.py   checks that JavaScript and Python give the same answers
+tests/test_event_watch.py checks that the RBI watch keeps and rejects the right headlines
 STUDY_GUIDE.md            plain-language explanation of everything, plus interview questions
 ```
 
