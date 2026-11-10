@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: "30 13 * * 1"     # Mondays 19:00 India time, to refresh prices
+    - cron: "30 13 * * *"     # Mondays 19:00 India time, to refresh prices
 
 permissions:
   contents: read
