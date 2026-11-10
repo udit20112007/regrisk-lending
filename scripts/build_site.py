@@ -1,98 +1,132 @@
 """
-BUILD THE WEB PAGE FOR GITHUB PAGES
-===================================
+BUILD THE WEBSITE
+=================
 
-GitHub Pages can only serve plain files. It cannot run a Python server, so a
-normal Streamlit app cannot live there.
+The website in web/ is plain HTML, CSS and JavaScript, so GitHub Pages can
+serve it directly. It needs one thing from Python: the event-study results.
 
-The fix is "stlite": a version of Streamlit that runs Python inside the
-visitor's own browser. This script packs the app, the code and the data into
-one file, site/index.html, which GitHub Pages can serve.
+This script
+  1. runs the event study (src/event_study.py) on the share prices,
+  2. saves every number the page needs to site/data.js,
+  3. copies the page itself (web/) into site/.
 
 Run with:   python scripts/build_site.py
-The GitHub workflow (.github/workflows/deploy.yml) runs it automatically.
+Preview:    python -m http.server --directory site     (then open the address shown)
+
+The GitHub workflow (.github/workflows/deploy.yml) runs this automatically.
 """
 
 import json
+import math
+import shutil
+import sys
+from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from src import event_study as es          # noqa: E402
+from src import lending_model as lm        # noqa: E402
+
+WEB = ROOT / "web"
 SITE = ROOT / "site"
 
-STLITE_VERSION = "1.12.1"                      # pinned so the page cannot break by surprise
-CDN = f"https://cdn.jsdelivr.net/npm/@stlite/browser@{STLITE_VERSION}/build"
+# The three reaction windows the page can show: 1, 2 or 6 trading days.
+WINDOWS = {"1": "CAR(0,0)", "2": "CAR(0,+1)", "6": "CAR(0,+5)"}
 
-# Python packages the browser must install. pandas and numpy come with Streamlit.
-REQUIREMENTS = ["plotly", "scipy"]
 
-# Code and data the app needs, by their path inside the project.
-CODE_FILES = [
-    "app.py",
-    "src/__init__.py",
-    "src/event_study.py",
-    "src/lending_model.py",
-    "src/integration.py",
-    "data/events.csv",
-    "data/tickers.csv",
-]
+def clean(value):
+    """Make a value safe for JSON: no NaN, no NumPy types."""
+    if value is None:
+        return None
+    if isinstance(value, (bool, str)):
+        return value
+    number = float(value)
+    return None if math.isnan(number) else number
 
-PAGE = """<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Regulatory risk and fintech lending partnerships</title>
-    <link rel="stylesheet" href="__CDN__/stlite.css" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <noscript>This page needs JavaScript. It runs the model in your browser.</noscript>
-    <script type="module">
-      import { mount } from "__CDN__/stlite.js";
-      mount(
-        {
-          entrypoint: "app.py",
-          requirements: __REQUIREMENTS__,
-          files: __FILES__,
+
+def collect_data() -> dict:
+    """Run the event study and gather everything the page shows."""
+    prices, is_sample = es.load_prices()
+    events = es.load_events()
+    tickers = es.load_tickers()
+    results = es.run_event_study(prices, events, tickers)
+    years = es.years_covered(prices)
+
+    reaction_dates = results.groupby("event_id")["reaction_date"].first()
+
+    event_rows = []
+    for _, ev in events.iterrows():
+        studied = ev["event_id"] in reaction_dates.index
+        event_rows.append({
+            "id": ev["event_id"],
+            "date": ev["announce_date"].strftime("%Y-%m-%d"),
+            "reaction_date": reaction_dates[ev["event_id"]].strftime("%Y-%m-%d") if studied else None,
+            "title": ev["title"],
+            "direction": ev["direction"],
+            "date_check": ev["date_check"],
+            "source_url": ev["source_url"],
+            "studied": studied,
+        })
+
+    # one list of company reactions per event
+    reactions = {}
+    for event_id, group in results.groupby("event_id"):
+        reactions[event_id] = [
+            {
+                "ticker": row["ticker"],
+                "company": row["company"],
+                "role": row["role"],
+                "car": {key: clean(row[col]) for key, col in WINDOWS.items()},
+                "p": {key: clean(row[col + " p"]) for key, col in WINDOWS.items()},
+            }
+            for _, row in group.iterrows()
+        ]
+
+    summary = {}
+    for key, col in WINDOWS.items():
+        table = es.summary_by_role(results, col)
+        summary[key] = [{name: clean(value) for name, value in row.items()} for row in table.to_dict("records")]
+
+    risk = es.risk_by_model(results, events, tickers, years)
+    damages = {model: [clean(v) for v in es.damages_for_model(results, events, model)]
+               for model in risk["model"]}
+
+    return {
+        "meta": {
+            "built": date.today().isoformat(),
+            "is_sample": is_sample,
+            "years": clean(years),
+            "price_start": prices.index[0].strftime("%Y-%m-%d"),
+            "price_end": prices.index[-1].strftime("%Y-%m-%d"),
+            "companies": int(len(tickers)),
         },
-        document.getElementById("root"),
-      );
-    </script>
-  </body>
-</html>
-"""
+        "events": event_rows,
+        "reactions": reactions,
+        "summary": summary,
+        "risk": [{name: clean(value) for name, value in row.items()} for row in risk.to_dict("records")],
+        "damages": damages,
+        "defaults": asdict(lm.DealInputs()),      # the starting slider values, straight from Python
+    }
 
 
 def main() -> None:
-    files = {}
-    for name in CODE_FILES:
-        text = (ROOT / name).read_text(encoding="utf-8")
-        files[name] = text if text.strip() else "# marks this folder as a Python package\n"
+    data = collect_data()
 
-    # Real prices if we have them, otherwise the made-up sample (the app then
-    # shows its yellow warning).
-    real = ROOT / "data" / "prices.csv"
-    if real.exists():
-        files["data/prices.csv"] = real.read_text(encoding="utf-8")
-        data_used = "REAL prices (data/prices.csv)"
-    else:
-        files["data/sample_prices.csv"] = (ROOT / "data" / "sample_prices.csv").read_text(encoding="utf-8")
-        data_used = "SAMPLE prices (made up) - the page will show a warning"
+    if SITE.exists():
+        shutil.rmtree(SITE)
+    shutil.copytree(WEB, SITE)
 
-    # Turn the files into JavaScript text. "</" is escaped so that nothing in
-    # the data can accidentally close the <script> tag.
-    files_js = json.dumps(files).replace("</", "<\\/")
+    # "</" is escaped so nothing in the data can end the script early.
+    text = json.dumps(data, allow_nan=False).replace("</", "<\\/")
+    (SITE / "data.js").write_text(f"window.REGRISK_DATA = {text};\n", encoding="utf-8")
 
-    page = (PAGE.replace("__CDN__", CDN)
-                .replace("__REQUIREMENTS__", json.dumps(REQUIREMENTS))
-                .replace("__FILES__", files_js))
-
-    SITE.mkdir(exist_ok=True)
-    (SITE / "index.html").write_text(page, encoding="utf-8")
-
-    size_kb = len(page.encode("utf-8")) / 1024
-    print(f"Built site/index.html ({size_kb:.0f} KB) with {len(files)} files.")
-    print(f"Data in the page: {data_used}")
+    used = "SAMPLE prices (made up) - the page will show a warning" if data["meta"]["is_sample"] \
+        else "REAL prices (data/prices.csv)"
+    print(f"Built site/ with {len(data['events'])} events and {data['meta']['companies']} companies.")
+    print(f"Data in the page: {used}")
 
 
 if __name__ == "__main__":

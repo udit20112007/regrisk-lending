@@ -3,7 +3,7 @@
 Read this before you put the project on your CV. An interviewer will ask you to explain it,
 change an assumption, or defend a choice. This guide prepares you for that.
 
-Suggested order: read section 1, run the app, then read sections 2 to 4 with the code open
+Suggested order: read section 1, open the site, then read sections 2 to 4 with the code open
 beside you.
 
 ---
@@ -118,7 +118,7 @@ future business to be X% smaller", so **each shock cuts all future loan volume b
 Loans already given are unaffected.
 
 This is a simplification. A share price also reflects payments, insurance and other
-businesses. That is why the app has a slider: "lending is hit this many times harder than
+businesses. That is why the site has a slider: "lending is hit this many times harder than
 the share price".
 
 ### Three tools (`src/integration.py`)
@@ -126,7 +126,7 @@ the share price".
 1. **One risk-adjusted number.** If shocks arrive at random at a steady rate, expected volume
    in month *t* is `planned volume × exp(−shocks per year × damage × t/12)`. The business
    shrinks a little, on average, every month. Shocks per year × damage works like an extra
-   discount rate, which is why the app calls it the **regulatory risk premium**.
+   discount rate, which is why the site calls it the **regulatory risk premium**.
 2. **Simulation.** 3,000 possible futures. Each month there is a small chance of a shock. When
    one arrives, the code picks one past shock at random and applies its damage. This shows
    the range of outcomes, the 1-in-20 bad case, and the chance of losing money.
@@ -142,6 +142,31 @@ guarantee ties up the fintech's expensive capital, and a lower cap frees it. The
 safety. The highest default rate the deal survives falls sharply. Be ready to say both halves,
 and to add that the model ignores one thing: lenders may refuse to partner at all with a
 fintech that has no money at risk.
+
+---
+
+## 4b. The website
+
+The site is three layers. Be clear about which is which.
+
+| Layer | What it does | Files |
+|---|---|---|
+| Analysis (Python) | Runs the event study and saves the results | `src/`, `scripts/build_site.py` |
+| Model in the browser (JavaScript) | Re-runs the lending model when a slider moves | `web/model.js` |
+| Display (HTML, CSS, JavaScript) | Layout, charts, light and dark mode | `web/index.html`, `web/styles.css`, `web/charts.js`, `web/app.js` |
+
+**Why is the model written twice?** A website on GitHub Pages cannot run Python. To make the
+sliders respond instantly, the lending model has to run in the visitor's browser, and browsers
+run JavaScript. So `web/model.js` is a line-by-line copy of the Python model.
+
+**How do you know the copy is right?** `tests/test_js_parity.py` runs the Python model and the
+JavaScript model on three different deals and compares over a hundred numbers. If any differs, the
+test fails and the site is not published. Python is the original. If you change the model,
+change Python first, then make the same change in `model.js` until the test passes.
+
+**What to say in an interview.** The finance and the Python are yours to explain in depth.
+For the front end, an honest answer is: "The analysis is in Python. The page uses a tested
+JavaScript copy of the same model so it can recalculate without a server."
 
 ---
 
@@ -172,7 +197,7 @@ It is the standard broad benchmark. A fair extension is to test the Nifty Financ
 index and see if results change.
 
 **Fourteen events is a small sample. Can you trust the averages?**
-Only as a guide. That is why the app reports p-values, shows individual events, and the
+Only as a guide. That is why the site reports p-values, shows individual events, and the
 simulation re-plays actual past shocks without assuming a smooth distribution.
 
 **Two of your events are one day apart. Is that a problem?**
@@ -206,7 +231,7 @@ benchmark, and real fee data from company filings.
    - Value with and without regulatory risk
    - Your recommendation: what guarantee to offer, and which rule change to watch
    - Limitations
-6. Put the code on GitHub with the README and a screenshot of the app using real data.
+6. Put the code on GitHub with the README and a screenshot of the site using real data.
 
 ## 8. CV lines (fill the brackets from your real-data run)
 
@@ -215,6 +240,6 @@ benchmark, and real fee data from company filings.
 - Modelled the unit economics of fintech-lender partnerships under RBI's 5% default loss
   guarantee cap; identified the guarantee level that maximises the default rate the deal can
   absorb ([X]% against [Y]% at the cap).
-- Combined both in a Monte Carlo valuation and an interactive Streamlit app; showed that
+- Combined both in a Monte Carlo valuation and an interactive web dashboard (GitHub Pages); showed that
   regulatory risk reduces partnership value by [X]% and that [scenario] is the most damaging
   rule change tested.

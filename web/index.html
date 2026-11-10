@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RegRisk · Regulatory risk in fintech lending</title>
+  <meta name="description" content="How much is a fintech lending partnership worth once RBI rule changes are allowed for? An event study of RBI actions joined to a model of the lending deal." />
+  <script>
+    // Pick light or dark before the page paints, so there is no flash.
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem("regrisk-theme"); } catch (e) {}
+      if (!theme) theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="#top" aria-label="RegRisk home">
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+      <rect width="26" height="26" rx="7" fill="var(--text)" />
+      <path d="M6 17.5 L10.5 12 L14 15 L20 7.5" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="20" cy="7.5" r="2.1" fill="var(--series-2)" />
+    </svg>
+    RegRisk
+  </a>
+  <nav aria-label="Sections">
+    <a href="#shocks">Regulatory shocks</a>
+    <a href="#deal">Lending deal</a>
+    <a href="#combined">Combined view</a>
+    <a href="#method">Method</a>
+  </nav>
+  <div class="nav-right">
+    <span class="pill" id="dataPill"></span>
+    <button class="icon-btn" id="themeToggle" type="button" aria-label="Switch between light and dark mode">
+      <svg class="sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/></svg>
+      <svg class="moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A8 8 0 0 1 9.8 4a8 8 0 1 0 10.2 10.2Z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="page" id="top">
+  <div class="banner" id="sampleBanner" hidden>
+    <strong>Sample data.</strong> The share prices behind the regulatory-shock numbers are made up, so those figures are
+    illustrative. Run <code>python src/fetch_prices.py</code> and rebuild to use real prices.
+  </div>
+
+  <section class="intro">
+    <p class="kicker">Fintech lending in India · RBI regulation</p>
+    <h1>What is a lending partnership worth when the rules can change?</h1>
+    <p class="lede">Fintechs earn fees by finding borrowers for banks, and often guarantee the first losses. This
+      dashboard measures how often RBI actions hit fintech share prices and how hard, then prices that risk into the deal.</p>
+  </section>
+
+  <section class="kpis" aria-label="Headline numbers">
+    <div class="card kpi hero">
+      <span class="kpi-label">Partnership value, with regulatory risk</span>
+      <span class="kpi-value" id="kpiValue"></span>
+      <span class="kpi-sub" id="kpiValueSub"></span>
+    </div>
+    <div class="card kpi">
+      <span class="kpi-label">Regulatory risk premium</span>
+      <span class="kpi-value" id="kpiPremium"></span>
+      <span class="kpi-sub" id="kpiPremiumSub"></span>
+    </div>
+    <div class="card kpi">
+      <span class="kpi-label">Deal survives defaults up to</span>
+      <span class="kpi-value" id="kpiCapacity"></span>
+      <span class="kpi-sub" id="kpiCapacitySub"></span>
+    </div>
+    <div class="card kpi">
+      <span class="kpi-label">Best guarantee within the cap</span>
+      <span class="kpi-value" id="kpiBest"></span>
+      <span class="kpi-sub" id="kpiBestSub"></span>
+    </div>
+  </section>
+
+  <div class="layout">
+    <aside class="card panel" aria-label="Deal assumptions">
+      <div class="panel-head">
+        <h2>Deal assumptions</h2>
+        <button class="link-btn" id="resetBtn" type="button">Reset</button>
+      </div>
+      <p class="panel-note">Illustrative starting values, not any company's actual figures. Every number on the page updates as you move a slider.</p>
+      <div id="controls"></div>
+    </aside>
+
+    <div class="content">
+
+      <!-- ============ 1. Regulatory shocks ============ -->
+      <section id="shocks">
+        <div class="section-head">
+          <span class="section-num">1</span>
+          <div>
+            <h2>Regulatory shocks</h2>
+            <p>An event study. For each RBI action, the share price move the overall market does not explain.</p>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card block">
+            <div class="block-head">
+              <div>
+                <h3>RBI actions, <span id="tlRange"></span></h3>
+                <p class="sub">Select an action to see how share prices reacted.</p>
+              </div>
+              <ul class="legend" aria-label="Legend">
+                <li><span class="swatch dot" style="background: var(--text)"></span>Tightening</li>
+                <li><span class="swatch ring"></span>Easing</li>
+              </ul>
+            </div>
+            <div class="chart" id="timeline"></div>
+            <div class="event-detail">
+              <div class="stepper">
+                <button class="icon-btn" id="prevEvent" type="button" aria-label="Previous action">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                </button>
+                <button class="icon-btn" id="nextEvent" type="button" aria-label="Next action">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                </button>
+              </div>
+              <div class="event-text">
+                <div class="event-meta" id="eventMeta"></div>
+                <p class="event-title" id="eventTitle"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid two">
+            <div class="card block">
+              <div class="block-head">
+                <div>
+                  <h3>Share price reaction</h3>
+                  <p class="sub" id="reactionSub"></p>
+                </div>
+                <div class="tools">
+                  <div class="seg" id="windowSeg" role="group" aria-label="Days included"></div>
+                  <div class="seg" id="viewSeg" role="group" aria-label="Chart or table">
+                    <button type="button" data-view="chart" aria-pressed="true">Chart</button>
+                    <button type="button" data-view="table" aria-pressed="false">Table</button>
+                  </div>
+                </div>
+              </div>
+              <ul class="legend" id="reactionLegend" aria-label="Legend">
+                <li><span class="swatch" style="background: var(--series-1)"></span>Company RBI acted against</li>
+                <li><span class="swatch" style="background: var(--series-2)"></span>Same business model</li>
+                <li><span class="swatch" style="background: var(--neutral-mark)"></span>Unrelated companies</li>
+              </ul>
+              <div class="chart" id="reactionChart"></div>
+              <div class="table-wrap" id="reactionTable" hidden></div>
+            </div>
+
+            <div class="card block">
+              <div class="block-head">
+                <div>
+                  <h3>Risk by business model</h3>
+                  <p class="sub">Value expected to be lost to regulation each year.</p>
+                </div>
+              </div>
+              <div class="barlist" id="riskList"></div>
+            </div>
+          </div>
+
+          <div class="card block">
+            <div class="block-head">
+              <div>
+                <h3>Average reaction across all actions</h3>
+                <p class="sub">Unrelated companies are the control group. They should barely move.</p>
+              </div>
+            </div>
+            <div class="table-wrap" id="summaryTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 2. Lending deal ============ -->
+      <section id="deal">
+        <div class="section-head">
+          <span class="section-num">2</span>
+          <div>
+            <h2>Lending deal</h2>
+            <p>What each side earns on every ₹100 lent, and how large a guarantee the deal can carry.</p>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="grid half">
+            <div class="card block">
+              <div class="block-head">
+                <div><h3>Fintech</h3><p class="sub">₹ per ₹100 lent</p></div>
+                <span class="chip" id="fintechChip"></span>
+              </div>
+              <div class="pnl fintech" id="fintechPnl"></div>
+            </div>
+            <div class="card block">
+              <div class="block-head">
+                <div><h3>Lender</h3><p class="sub">₹ per ₹100 lent</p></div>
+                <span class="chip" id="lenderChip"></span>
+              </div>
+              <div class="pnl lender" id="lenderPnl"></div>
+            </div>
+          </div>
+
+          <div class="card block">
+            <div class="block-head">
+              <div>
+                <h3>How many defaults can the deal survive?</h3>
+                <p class="sub">A bigger guarantee protects the lender but exposes the fintech. The deal works only below both lines.</p>
+              </div>
+            </div>
+            <ul class="legend" aria-label="Legend">
+              <li><span class="swatch line" style="background: var(--series-2)"></span>Lender still earns its minimum</li>
+              <li><span class="swatch line" style="background: var(--series-1)"></span>Fintech still makes a profit</li>
+            </ul>
+            <div class="chart" id="capacityChart"></div>
+            <div class="finding">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2h5c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3Z"/></svg>
+              <div id="capacityFinding"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 3. Combined view ============ -->
+      <section id="combined">
+        <div class="section-head">
+          <span class="section-num">3</span>
+          <div>
+            <h2>Combined view</h2>
+            <p>Each regulatory shock cuts future loan volume by the damage the event study measured. This is the deal valued with that risk included.</p>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card controls-row">
+            <div class="field grow">
+              <label>Take regulatory risk from</label>
+              <div class="seg" id="modelSeg" role="group" aria-label="Business model"></div>
+            </div>
+            <div class="field">
+              <label for="passThrough">Lending is hit harder than the share price by <output id="passThroughOut"></output></label>
+              <input type="range" id="passThrough" min="0.5" max="5" step="0.25" value="1" />
+            </div>
+          </div>
+
+          <div class="card block">
+            <div class="block-head">
+              <div>
+                <h3>3,000 simulated futures</h3>
+                <p class="sub">In each one, shocks arrive at random and each shock replays the damage of a past RBI action.</p>
+              </div>
+            </div>
+            <div class="chart" id="histChart"></div>
+            <div class="statline">
+              <div><div class="kpi-label">Value ignoring regulation</div><div class="kpi-value" id="simBase"></div></div>
+              <div><div class="kpi-label">Average with regulatory risk</div><div class="kpi-value" id="simMean"></div></div>
+              <div><div class="kpi-label">1-in-20 bad outcome</div><div class="kpi-value" id="simWorst"></div></div>
+              <div><div class="kpi-label">Chance of losing money</div><div class="kpi-value" id="simLoss"></div></div>
+            </div>
+          </div>
+
+          <div class="card block">
+            <div class="block-head">
+              <div>
+                <h3>Specific rule changes</h3>
+                <p class="sub">If a change pushes the lender below its minimum return, the lender cuts the fintech's sourcing fee until it is back at the minimum.</p>
+              </div>
+            </div>
+            <div class="table-wrap" id="scenarioTable"></div>
+            <div class="finding">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2h5c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3Z"/></svg>
+              <div id="combinedFinding"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Method ============ -->
+      <section id="method">
+        <div class="section-head">
+          <span class="section-num">i</span>
+          <div>
+            <h2>Method and limits</h2>
+            <p>What the numbers rest on, and where to be careful.</p>
+          </div>
+        </div>
+        <div class="method">
+          <div class="card block">
+            <h3>Event study</h3>
+            <p>For each stock, a line is fitted against the Nifty 50 on 120 calm trading days before the event. The abnormal return is the actual return minus what that line predicts, added up from the first day investors could react.</p>
+            <p id="methodData"></p>
+          </div>
+          <div class="card block">
+            <h3>Lending deal</h3>
+            <p>An EMI loan with defaults spread evenly over its life. The fintech's guarantee is a deposit capped by RBI at 5% of the amount disbursed, invoked 120 days after a missed payment and not refilled once used.</p>
+            <p>Fees, costs and default rates are illustrative.</p>
+          </div>
+          <div class="card block">
+            <h3>Limits</h3>
+            <ul>
+              <li>Few events, and some overlap in time.</li>
+              <li>Reading share-price damage as lost loan volume is an assumption. The slider above tests it.</li>
+              <li>The model has no term for a lender wanting the fintech to keep money at risk.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer>Analysis in Python (pandas, NumPy, SciPy). The page recalculates in your browser with a tested copy of the same model.</footer>
+
+<div class="tooltip" id="tooltip" role="status" hidden></div>
+
+<script src="data.js"></script>
+<script src="model.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

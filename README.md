@@ -26,45 +26,49 @@ range of outcomes.
 
 ```bash
 pip install -r requirements.txt
-python src/fetch_prices.py      # downloads real share prices (needs internet)
-streamlit run app.py            # opens the app in your browser
-python -m pytest -q             # 20 checks on the calculations
+python src/fetch_prices.py                  # downloads real share prices (needs internet)
+python scripts/build_site.py                # runs the event study and builds the website
+python -m http.server --directory site      # open the address it prints
+python -m pytest -q                         # 24 checks on the calculations
 ```
 
-**Important: sample data.** Until you run `fetch_prices.py`, the app uses
-`data/sample_prices.csv`. Those prices are invented so the code can run offline. The app
-shows a yellow warning while they are in use. Never quote results from the sample data.
+**Important: sample data.** Until you run `fetch_prices.py`, the site uses
+`data/sample_prices.csv`. Those prices are invented so the code can run offline. The site
+shows a "Sample data" warning while they are in use. Never quote results from the sample data.
 
-## Put it online with GitHub only
+## How the website works
+
+- **Python does the analysis.** `scripts/build_site.py` runs the event study and writes the
+  results to `site/data.js`.
+- **The page recalculates in the browser.** Moving a slider re-runs the lending model
+  instantly. That needs the model in JavaScript, so `web/model.js` is a line-by-line copy of
+  `src/lending_model.py` and `src/integration.py`.
+- **A test keeps the two copies identical.** `tests/test_js_parity.py` runs both on three
+  different deals and fails if any number differs. Python is the original.
+- **No outside services.** Charts are hand-written SVG (`web/charts.js`) and the font is
+  bundled, so the page loads instantly and works offline.
+
+## Put it online with GitHub
 
 The repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml`). On every
 push to `main`, and every Monday, it:
 
-1. runs the 20 tests (a failure stops the deployment)
+1. runs the tests (a failure stops the deployment)
 2. downloads fresh share prices from Yahoo Finance
-3. packs the app into a single web page with [stlite](https://github.com/whitphx/stlite),
-   which runs Streamlit and Python inside the visitor's browser
-4. publishes that page on GitHub Pages
+3. builds the website
+4. publishes it on GitHub Pages
 
 One-time setup: in the repository open **Settings → Pages → Build and deployment** and set
 **Source** to **GitHub Actions**. Then push. The live address appears on the **Actions** tab
 when the run finishes, in the form `https://YOUR-USERNAME.github.io/regrisk-lending/`.
 
-Notes:
-
-- The first visit takes roughly 20 to 40 seconds, because the browser has to download Python.
-- If Yahoo Finance refuses the download, the workflow carries on with `data/prices.csv` from
-  the repository. Commit that file once from your own computer so there is always a fallback.
-  Without it the page uses the sample data and shows the warning.
-- To preview the page on your computer: `python scripts/build_site.py`, then
-  `python -m http.server --directory site` and open the address it prints.
+If Yahoo Finance refuses the download, the workflow carries on with `data/prices.csv` from
+the repository. Commit that file once from your own computer so there is always a fallback.
+Without it the site uses the sample data and shows the warning.
 
 ## What is in the folder
 
 ```
-.github/workflows/deploy.yml   tests, builds and publishes the page on GitHub Pages
-scripts/build_site.py     packs the app into one web page for GitHub Pages
-app.py                    the interactive app (3 tabs)
 src/event_study.py        Part 1
 src/lending_model.py      Part 2
 src/integration.py        Part 3
@@ -72,9 +76,27 @@ src/fetch_prices.py       downloads real prices from Yahoo Finance
 src/make_sample_data.py   creates the made-up sample prices
 data/events.csv           14 RBI actions, 2022 to 2026, each with a source link
 data/tickers.csv          12 listed companies and their business models
+
+web/index.html            the page
+web/styles.css            its design (light and dark mode)
+web/app.js                reads the sliders, runs the model, fills in the page
+web/model.js              the JavaScript copy of the Python model
+web/charts.js             the charts
+web/fonts/                the Geist font (SIL Open Font License)
+
+scripts/build_site.py     runs the event study and builds site/
+.github/workflows/deploy.yml   tests, builds and publishes on GitHub Pages
 tests/test_models.py      checks that the calculations are right
+tests/test_js_parity.py   checks that JavaScript and Python give the same answers
 STUDY_GUIDE.md            plain-language explanation of everything, plus interview questions
 ```
+
+## Design
+
+A light analytics dashboard with a dark mode. Chart colours are fixed by meaning: blue is the
+fintech or the company in focus, orange is the lender or peer companies, grey is background
+context. The colours were checked for contrast and for colour-blind readers in both modes.
+To change the look, edit the variables at the top of `web/styles.css`.
 
 ## The RBI rules the model is built on
 
